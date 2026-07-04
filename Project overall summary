@@ -1,0 +1,173 @@
+VOYAGERS OF SHADOWS
+Bharatiya Antariksh Hackathon 2026 — Problem Statement 8
+Complete Project Output Report
+
+EXECUTIVE SUMMARY
+Voyagers of Shadows is a multidisciplinary engineering team that developed an integrated, end-to-end pipeline for detecting and characterizing subsurface ice deposits in the lunar south polar Permanently Shadowed Regions (PSRs) using Chandrayaan-2 DFSAR radar and OHRC optical data. Our solution goes far beyond simple ice detection — we deliver a complete mission intelligence package that includes ice probability mapping, terrain hazard analysis, landing site selection, rover path optimization, and resource quantification. Every output is scientifically honest, every claim is defensible, and every result is directly actionable for ISRO mission planning. 
+The lunar south pole is one of the most scientifically and strategically important regions in the solar system. Water ice, trapped in permanently shadowed craters where temperatures drop below 40 Kelvin, could support human habitation, produce breathable oxygen, and generate rocket fuel through electrolysis. Detecting, locating, and quantifying this resource is the foundational step toward sustainable lunar exploration. Our pipeline addresses this challenge with rigorous scientific methodology, proven algorithms, and honest uncertainty quantification.
+
+SECTION 1: PROBLEM STATEMENT AND SCIENTIFIC CONTEXT
+1.1 The Challenge of Lunar South Polar Ice
+The lunar south pole hosts some of the most extreme environments in the solar system. Permanently Shadowed Regions — craters whose floors never receive direct sunlight due to the low angle of the Sun at the poles — maintain temperatures cold enough to trap volatile compounds including water ice for billions of years. These regions represent the largest known reservoir of water in the inner solar system beyond Earth.
+However, detecting this ice presents five interconnected challenges that our pipeline addresses systematically.
+
+Challenge 1: Subsurface Detection
+Water ice at the lunar south pole is not sitting exposed on the surface. It is buried beneath regolith at depths of several meters, mixed with dust and rocky material at concentrations estimated between 1 and 10 percent by mass. Optical cameras cannot see it. Only radar can penetrate the regolith and return signals that distinguish icy material from dry rock. The Chandrayaan-2 DFSAR instrument, operating at L and S band frequencies, can penetrate 5 to 10 meters below the surface — precisely the depth range where ice is expected to persist.
+
+Challenge 2: Ice-Rock Discrimination
+Even with radar, distinguishing ice from rocky terrain is not straightforward. Both ice and certain rock types can produce elevated backscatter returns. The key discriminators are the Circular Polarization Ratio (CPR) and the Degree of Polarization (DOP). Pure water ice tends to produce CPR values above 1.0 due to volume scattering, and low DOP values due to depolarization. However, rough rocky surfaces can also produce elevated CPR, making a probabilistic fusion approach — rather than a simple threshold — essential for defensible ice detection.
+
+Challenge 3: Safe Landing Site Identification
+Knowing where ice is located is only the beginning. A lunar mission must land safely. The south polar terrain is among the most challenging in the solar system — extreme slopes near crater rims, boulders ejected by impacts, permanent shadows that eliminate solar power, and surface roughness that could topple a lander. Identifying safe landing zones requires integrating multiple terrain constraints simultaneously and ranking candidates by overall suitability.
+
+Challenge 4: Rover Path Optimization
+Even with a safe landing site identified, the rover must traverse from the landing zone to the ice deposit. This traverse may cross illuminated terrain, shadow boundaries, rough boulder fields, and steep slopes. A naive straight-line path could be impassable. Optimal routing requires a pathfinding algorithm that respects terrain constraints, accounts for the rover's power budget (which depends on solar illumination), and identifies charging halt locations where the rover can replenish energy before continuing into shadow.
+
+Challenge 5: Resource Quantification
+Mission planners need to know not just where the ice is, but how much of it exists and what it means for mission sustainability. This requires converting radar-detected ice-bearing zones into volume estimates, mass calculations, and ultimately operational metrics like habitat support duration in person-years. Uncertainty must be quantified explicitly — a single number without bounds is scientifically indefensible.
+
+1.2 Why Chandrayaan-2 Data
+Chandrayaan-2's DFSAR instrument is uniquely suited to this challenge. It is the first fully polarimetric SAR to orbit the Moon, providing HH, VV, and HV polarization measurements that enable CPR and DOP calculation. The OHRC instrument provides 0.25-meter resolution optical imagery — the highest resolution available from any lunar orbiter — enabling boulder detection, surface roughness mapping, and illumination zone delineation at scales relevant to landing and rover operations. Together, these instruments provide the complementary radar and optical dataset that our pipeline requires.
+
+SECTION 2: OUR APPROACH AND METHODOLOGY
+2.1 Pipeline Architecture
+Our solution is organized as a six-stage sequential pipeline where each stage produces validated outputs that feed directly into the next stage. This modular design ensures that even partial execution produces useful results — if we complete only the first two stages, we still have ice probability maps and terrain hazard maps that constitute a genuine scientific contribution.
+
+Stage 1: Data Preprocessing
+All input data undergoes radiometric calibration, geometric correction, co-registration, and normalization before analysis. DFSAR bands are converted from digital numbers to normalized backscatter values. OHRC imagery is normalized to a 0 to 255 DN scale with a valid-data mask that excludes background pixels. This preprocessing step is critical — downstream errors in detection and quantification trace almost invariably to inadequate preprocessing.
+
+Stage 2: Ice Detection
+The ice detection stage computes CPR and DOP from the DFSAR polarimetric bands and fuses them probabilistically using sigmoid functions to produce a continuous ice probability map on a 0 to 1 scale. This is fundamentally different from a binary ice/no-ice classification. A probabilistic output allows downstream stages to use confidence thresholds appropriate to their specific requirements — landing site analysis might use a 0.55 threshold, while resource quantification might use 0.65 to ensure conservative estimates.
+The CPR formula is: CPR = (HH + VV) divided by (HH + VV + 2 times HV). Values above 1.0 are ice-consistent. The DOP formula is: DOP = the square root of (HH squared plus VV squared plus 2 times HV squared), divided by (HH plus VV plus 2 times HV). Values below 0.13 to 0.30 are ice-consistent. The fusion formula combines both parameters: Ice Confidence = 0.6 times Sigmoid(CPR minus 1.0) plus 0.4 times Sigmoid(0.30 minus DOP). Gaussian smoothing with sigma equal to 1.5 pixels is applied to reduce speckle noise before connected components analysis identifies discrete ice-bearing zones.
+
+Stage 3: Terrain Analysis
+The terrain analysis stage processes OHRC optical imagery to produce illumination maps, surface roughness maps, brightness-gradient proxy maps, and boulder hazard maps. A critical scientific honesty point is maintained throughout: OHRC is a 2D optical camera, not a radar altimeter. It measures brightness, not elevation. True slope in degrees requires a Digital Elevation Model from LOLA or stereo photoclinometry. Our terrain analysis therefore labels its steepness product as a brightness-gradient proxy — explicitly not slope in degrees — and notes that true slope computation is a build-phase deliverable requiring LOLA DEM integration.
+Surface roughness is computed as the local standard deviation of DN values in an 11 by 11 pixel window. The top 15 percent of roughness values are flagged as rough terrain. Boulder detection identifies bright pixels (DN above 205) with adjacent dark shadow pixels (DN below 51), clusters them using connected-component labeling, and discards sub-resolution specks below 4 pixels. The hazard mask combines rough terrain, boulders, and strong edges (crater rims), then applies morphological opening and closing to produce coherent hazard regions rather than pixel-scale speckle.
+
+Stage 4: Landing Site Selection
+Landing site selection integrates ice proximity, terrain safety, and illumination into a single suitability score using a weighted four-factor formula. The formula is: Suitability = 0.35 times Slope Safety plus 0.30 times Roughness Safety plus 0.20 times Ice Proximity plus 0.15 times Illumination. Weights reflect mission priorities — slope safety is paramount because a tilted lander is a failed mission, roughness safety is critical for structural integrity, ice proximity determines mission value, and illumination determines power availability.
+Candidate sites are identified using local maxima detection with a minimum separation of 200 pixels to ensure candidates are genuinely distinct locations. Safety validation checks confirm that all constraints are met at each candidate before it is included in the final ranking. The output is a ranked list of the top three candidate landing sites, each with full metrics including coordinates, slope, roughness, ice proximity, and illumination percentage.
+
+Stage 5: Rover Path Planning
+Rover path planning uses the A* algorithm with a solar-power-aware state model. Standard A* finds the shortest weighted path between start (landing site) and goal (ice target). Our implementation extends A* with a second state variable that tracks the number of consecutive shadow cells the rover has traversed. If this count exceeds MAX_SHADOW_RUN (set to 40 cells), the path is rejected as power-infeasible regardless of its total cost. This directly addresses the challenge of solar-powered rover survival during extended shadow traverses.
+The cost map is constructed from terrain layers: rough terrain receives a cost multiplier of 4.0 reflecting slow, risky progress; shadow cells receive a cost multiplier of 3.0 reflecting power drain; boulders and strong edges are impassable (infinite cost); well-lit terrain has base cost 1.0. Eight-connectivity is used with diagonal moves costing square root of 2 times the straight-move cost. Charging halts — locations where the path re-enters illuminated terrain after a shadow segment — are identified and marked on the output map.
+
+Stage 6: Resource Quantification
+Resource quantification converts the ice-candidate pixel count from the detection stage into physical volumes and masses using a chain of stated assumptions. The formula is: Ice Volume = Area times Depth times Ice Fraction, where area comes from counting ice-candidate pixels and multiplying by pixel area, depth is set to 5 meters based on DFSAR penetration characteristics, and ice fraction varies across three scenarios — 5 percent conservative, 7.5 percent best estimate, and 10 percent optimistic — based on LCROSS ejecta measurements from Colaprete et al. 2010.
+Ice mass follows directly from ice volume and the density of water ice at 917 kilograms per cubic meter. Water yield equals ice mass on a one-to-one basis assuming complete melting and recovery. Habitat support duration in person-years is calculated by dividing water mass in kilograms by the NASA ECLSS baseline consumption of 1500 kilograms per person per year. All three scenarios are reported with explicit uncertainty ranges.
+
+
+SECTION 3: KEY RESULTS AND OUTPUTS
+3.1 DFSAR Mission Map
+The DFSAR mission map is the central output of our pipeline. It displays the DFSAR backscatter mosaic of the lunar south polar region overlaid with ice-consistent zones, the selected landing site, the identified ice target, and three rover corridor options. Every element is formally labeled with leader lines to prevent overlap. The title explicitly states the cost weights and acknowledges that slope cost requires LOLA DEM integration in the build phase.
+The ice-consistent overlay uses a cool colormap applied only to pixels where ice score exceeds 0.55 and the valid-data mask is true. This masking step is critical — without it, the empty background of the browse image receives spurious ice scores and the map is dominated by false detections. The valid-data mask identifies genuine radar return pixels by excluding near-black and near-white background values.
+The dielectric inset shows the DFR-derived dielectric proxy field alongside the ice target location. The target epsilon value of approximately 4.05 is labeled as elevated dielectric and ice-consistent, explicitly pending CPR/DOP confirmation. The volume baseline epsilon of 3.0 used in resource calculations is noted separately with an explanation of the difference — the target epsilon is a proxy measured from the browse image, while the volume baseline represents the pure-ice dielectric constant used for conservative resource estimation.
+Three rover corridors are shown with staggered leader lines at different vertical positions to eliminate overlap. Each corridor is labeled with its name, estimated distance in kilometers, and the designation as a staged traverse. The staged designation acknowledges that distances of 16 to 21 kilometers exceed single-charge rover capability and require charging halts at illuminated waypoints along the route.
+
+3.2 OHRC Morphology Map
+The six-panel OHRC morphology map provides a comprehensive surface characterization of the OHRC frame. Panel 1 shows the original OHRC optical image normalized to DN 0 to 255. Panel 2 shows illumination zones classified as shadow (DN below 51), transition, and favourable lit (DN above 115) with the percentage of each zone reported in the panel title. Panel 3 shows surface roughness as the local standard deviation of DN values, with brighter colors indicating more complex, blocky terrain.
+Panel 4 shows boulder hazards as hollow circle markers centered on clustered bright-shadow pixel pairs, reporting a count of approximately N boulder candidates rather than a raw pixel count. This distinction is scientifically important — geologists interpret boulder counts, not pixel counts. Panel 5 shows the brightness-gradient proxy with explicit labeling as relative steepness from 0 to 1, NOT slope in degrees. This honesty label prevents the common overclaim of deriving terrain slope from a single optical image without a DEM. Panel 6 shows the combined hazard mask after morphological cleanup, with coherent red regions (hazard), green regions (safe and lit), and blue regions (shadow).
+The stats box burned into the figure reports roughness percentage, boulder count, hazard area percentage, and safe-and-lit percentage in a clearly visible band at the bottom of the figure. The honesty footer states explicitly that true slope and elevation require a LOLA DEM in the build phase.
+
+3.3 OHRC Brightness Surface
+The three-dimensional OHRC brightness surface visualizes the optical image as a surface plot with brightness (DN) on the vertical axis. This visualization legitimately shows boulders as sharp spikes, shadowed regions as flat low plateaus, and rough terrain as high-frequency texture. The Z-axis label reads Brightness (DN) — NOT elevation, and the honesty footer states that the surface visualizes texture and blocky hazards only, with true elevation and slope requiring a LOLA DEM.
+The surface is downsampled to approximately 250 pixels per axis for computational tractability, with the downsampling step size reported in the output summary. Light Gaussian smoothing with sigma equal to 1.5 is applied so structure reads as terrain-like texture rather than noise spikes. The X and Y axes are labeled in metres using the OHRC ground sample distance of 0.25 metres per pixel multiplied by the downsampling step, giving a physically interpretable scale.
+
+3.4 Rover Traverse Map
+The A* rover traverse map shows the optimal path from the landing site to the ice target overlaid on the OHRC image with terrain hazard coloring. The landing site is marked with a green star and formally annotated with coordinates, slope, and illumination percentage. The ice target is marked with a cyan triangle and annotated with epsilon value, ice-consistent designation, and distance from the landing site.
+The path itself is shown in yellow with charging halt locations marked as orange circles where the path re-enters illuminated terrain after shadow segments. The metrics box reports path length in kilometers, waypoint count, percentage of path in shadow, and longest continuous shadow run in kilometers. The power feasibility verdict states whether the longest shadow run exceeds the maximum allowed shadow run limit, converting a potential weakness into a demonstrated engineering constraint awareness.
+
+3.5 Resource Quantification
+The resource quantification figure presents results across three scenarios in a six-panel layout. The first two panels show ice volume in cubic meters and habitat support duration in person-years as bar charts with values labeled on each bar. The third panel shows the uncertainty band as a filled curve of person-years versus ice fraction percentage, with the three scenario points annotated.
+The assumption chain panel at the bottom walks through every step from OHRC detection through area calculation, volume calculation, mass calculation, and habitat support, showing the input values, formulas, sources, and intermediate results at each step. This explicit assumption chain is the most important element of the resource quantification output — it allows any reviewer to verify every number independently and understand exactly what was assumed and why.
+
+
+SECTION 4: SCIENTIFIC HONESTY FRAMEWORK
+4.1 What We Claim and What We Do Not Claim
+Scientific honesty is the foundation of our submission. We have been explicit about the limitations of our data products and our methods at every step.
+We do not claim that our OHRC shadow detection is ice detection. Dark pixels in OHRC are shadows, not ice. Ice may persist in shadows, but shadow is a necessary condition, not a sufficient one. Our pipeline correctly labels OHRC-derived zones as shadow-proxy ice candidates and explicitly states that confirmation requires DFSAR CPR/DOP analysis.
+We do not claim that our brightness-gradient proxy is slope in degrees. True slope requires a Digital Elevation Model. Our terrain analysis correctly labels the brightness-gradient product as a relative steepness proxy on a 0 to 1 scale and notes in every figure footer that true slope requires a LOLA DEM in the build phase.
+We do not claim that our dielectric target value of 4.05 confirms ice. Dielectric values in this range are elevated and ice-consistent, but dry dense regolith can produce similar values. Every mention of this value in our outputs carries the explicit qualification that it is pending CPR/DOP confirmation.
+We do not claim that our DFSAR browse image analysis constitutes calibrated polarimetric processing. The browse image is a rendered preview, not the raw polarimetric data product. Our pipeline correctly labels the CPR and DOP computed from the browse image as proxies derived from backscatter brightness, and the authorship caption on every figure states prototype output — our processing and names the data source explicitly.
+
+4.2 Uncertainty Quantification
+Every quantitative output in our pipeline includes explicit uncertainty bounds. Ice volume is reported as a range from conservative to optimistic scenarios. Habitat support duration is reported as a range rather than a single number. Threshold-based percentages like shadow coverage are reported with their criteria stated — shadow means DN below 51, which is the bottom 20 percent of the scene brightness range — so any reviewer can understand what the number means and how it would change if the threshold changed.
+This approach to uncertainty is unusual in hackathon submissions, where teams typically report single impressive numbers without bounds. We believe that honest uncertainty ranges, explicitly justified, are more credible and more useful to mission planners than precise-seeming numbers without stated assumptions.
+
+SECTION 5: TECHNOLOGY STACK AND IMPLEMENTATION
+
+5.1 Software and Libraries
+Our entire pipeline runs on free, open-source software requiring zero licensing cost. The platform is Google Colab with Python 3.12. Core scientific computing uses NumPy for array operations and SciPy for image processing, filtering, and connected-component analysis. Geospatial operations use Rasterio for raster input/output and Geopandas for vector operations. Visualization uses Matplotlib with Cartopy for map projections and Seaborn for statistical plots. Image processing uses Pillow and Scikit-Image. Pathfinding uses Python's built-in heapq module implementing the A* algorithm with a custom solar-power state extension.
+The total software cost is zero. The commercial equivalent of comparable proprietary geospatial and remote-sensing software would exceed 2 crore rupees (approximately 250,000 US dollars) in annual licensing fees. Our open-source approach makes the pipeline immediately reproducible by any team with internet access and a Google account.
+
+5.2 Algorithms
+Sigmoid Function maps continuous CPR and DOP values to probabilities between 0 and 1. The steepness parameter controls how sharply the function transitions at the ice-consistent threshold. We use a steepness of 6.0 for CPR and 8.0 for DOP.
+Sobel Operators compute spatial gradients in the X and Y directions using 3 by 3 convolution kernels. The gradient magnitude, computed as the square root of the sum of squared X and Y gradients, gives the brightness-gradient proxy used as a steepness indicator.
+Gaussian Filtering smooths images with a bell-shaped kernel characterized by sigma, the standard deviation in pixels. We use sigma equal to 1.5 for the ice score and 1.5 for the brightness-gradient proxy. This reduces noise without blurring genuine features.
+Connected Components Analysis identifies clusters of pixels that meet a threshold criterion and are spatially connected. We use this to identify discrete ice-bearing zones from the ice score map and discrete boulder candidates from the bright-shadow detection.
+A* Pathfinding finds the minimum-cost path between two points on a grid using a priority queue ordered by the sum of actual cost from start and heuristic estimated cost to goal. Our implementation uses Euclidean distance as the heuristic and 8-connectivity with diagonal cost of square root of 2. The solar-power extension adds a second state variable tracking consecutive shadow cells and rejects paths that exceed the shadow run limit.
+Morphological Opening and Closing remove noise from binary masks. Opening (erosion followed by dilation) removes small isolated features. Closing (dilation followed by erosion) fills small gaps and connects nearby regions. We apply one iteration of opening and two iterations of closing to the hazard mask to produce coherent hazard regions.
+
+5.3 Computational Performance
+The entire pipeline executes within the 30-hour hackathon window with significant margin. Preprocessing completes in approximately 2 hours. Ice detection with full DFSAR data completes in approximately 4 hours. Terrain analysis completes in approximately 4 hours. Landing site selection completes in approximately 4 hours. Rover pathfinding completes in approximately 4 hours depending on terrain complexity and path length. Resource quantification completes in approximately 2 hours. Visualization and reporting requires approximately 4 hours. Final review and submission requires approximately 2 hours. Total: approximately 26 hours, leaving 4 hours of margin for unexpected issues.
+
+
+SECTION 6: MISSION RELEVANCE AND IMPACT
+6.1 Addressing PS8 Requirements
+Problem Statement 8 asks for detection and characterization of subsurface ice in the lunar south polar region using Chandrayaan-2 DFSAR and OHRC data. Our pipeline addresses all four key requirements:
+Detection: Our CPR and DOP analysis produces ice probability maps on a 0 to 1 scale, identifying ice-consistent zones with stated confidence levels.
+Characterization: Our resource quantification converts detected zones into volume estimates, mass calculations, and habitat support metrics with explicit uncertainty bounds.
+DFSAR usage: Our ice detection stage uses DFSAR polarimetric data (or its browse-image proxy) as the primary detection instrument, correctly applying radar physics principles.
+OHRC usage: Our terrain analysis, morphology mapping, and rover path planning use OHRC optical imagery for surface characterization, illumination mapping, and hazard identification.
+
+6.2 Mission-Level Integration
+What distinguishes our submission from a typical detection-only approach is that we deliver a complete mission intelligence package. A detection-only submission answers the question of where ice might be. Our submission answers the complete set of mission-planning questions: Where is the ice? How confident are we? Where can we safely land? How does the rover get from the landing site to the ice? How much water is accessible? How long could it support human habitation?
+This mission-level integration is the single most important differentiator between our submission and teams that stop at ice detection. ISRO is not planning a map-making mission. They are planning a resource utilization mission. Our pipeline delivers the complete intelligence foundation for mission go/no-go decisions.
+
+6.3 ISRU Connection
+In-Situ Resource Utilization (ISRU) is the process of using local resources to support space missions rather than carrying everything from Earth. Water ice at the lunar south pole is the most valuable ISRU resource in the inner solar system. Our resource quantification directly supports ISRU planning by estimating accessible water volume, mass, and the duration it could support human habitation and fuel production. This connection between our technical outputs and the broader strategic importance of lunar ice resource utilization gives our submission clear mission relevance beyond the detection problem.
+
+
+SECTION 7: TEAM AND PROJECT MANAGEMENT
+
+7.1 Team Profile
+Voyagers of Shadows is a multidisciplinary engineering team combining expertise in mechanical engineering and programming. Our team brings together skills in geospatial data processing, algorithm development, scientific visualization, and mission planning — the full range required to execute an end-to-end pipeline from raw satellite data to actionable mission intelligence.
+Our team description in 200 characters: Voyagers of Shadows — engineering students using Chandrayaan-2 radar data to detect subsurface ice in the Moon south pole, planning landing sites and rover paths for future ISRO lunar missions.
+
+7.2 Execution Plan
+Our 30-hour hackathon execution is organized into eight sequential phases with checkpoints after each phase. Phase 0 (hours 0 to 2): system initialization, environment setup, data validation. Phase 1 (hours 2 to 4): data preprocessing, calibration, normalization. Phase 2 (hours 4 to 8): ice detection, the core scientific result. Phase 3 (hours 8 to 12): terrain analysis, morphology mapping. Phase 4 (hours 12 to 16): landing site selection, candidate ranking. Phase 5 (hours 16 to 20): rover pathfinding, traverse optimization. Phase 6 (hours 20 to 24): resource quantification, habitat estimation. Phase 7 (hours 24 to 28): visualization, report writing. Phase 8 (hours 28 to 30): final review, quality assurance, submission.
+The modular design ensures that even if later phases encounter issues, all earlier-phase results are complete and submittable. Checkpoints at each phase allow the team to verify progress and catch issues before they compound.
+
+SECTION 8: ESTIMATED IMPLEMENTATION COST
+8.1 Prototype Cost
+Prototype cost for the hackathon is zero rupees. The entire pipeline runs on Google Colab using free compute resources, open-source Python libraries, and Chandrayaan-2 data provided by ISRO. No hardware purchases, no software licenses, no cloud subscriptions.
+
+8.2 Real-Time Operational Deployment Cost
+Real-time operational deployment of the complete pipeline for continuous south-polar monitoring would require the following annual expenditures: Cloud compute for GPU/CPU processing, approximately 4 to 8 lakh rupees per year; Cloud storage for GeoTIFF rasters and analysis archives, approximately 1 to 2 lakh rupees per year; Data pipeline automation and orchestration, approximately 1 to 2 lakh rupees per year; Monitoring, maintenance, and updates, approximately 1 to 2 lakh rupees per year. One-time setup costs are approximately 20,000 to 40,000 rupees for initial cloud environment configuration.
+Total annual operational cost is therefore approximately 8 to 15 lakh rupees (10,000 to 18,000 US dollars) per year. The commercial equivalent of the proprietary geospatial and remote-sensing software that our open-source stack replaces would cost over 2 crore rupees (250,000 US dollars) in annual licensing alone. Deployment on ISRO's existing ground-station compute infrastructure would reduce the cloud compute cost to near zero, potentially bringing total annual operational cost below 3 lakh rupees.
+
+SECTION 9: CONCLUSIONS AND NEXT STEPS
+
+9.1 What We Deliver
+Our pipeline delivers a complete mission intelligence package for the lunar south polar ice detection problem. This includes an ice probability map with confidence levels from 0 to 1 derived from DFSAR radar analysis; a terrain hazard map derived from OHRC optical morphology analysis; a ranked list of the top three candidate landing sites with full safety metrics; an optimized rover traverse route from landing site to ice target with solar-power feasibility assessment; and resource estimates in three scenarios covering ice volume, mass, water yield, and habitat support duration.
+Every output carries explicit authorship (prototype output — our processing), data provenance (generated from Chandrayaan-2 data), method description (the specific algorithm and parameters used), and honesty qualifications (what the output claims and what it does not claim). This combination of scientific rigor, honest uncertainty, and mission-level completeness represents our core contribution to the Bharatiya Antariksh Hackathon 2026.
+
+9.2 Build Phase Deliverables
+Several capabilities are correctly identified as build-phase deliverables requiring resources beyond the hackathon window. True slope mapping requires LOLA DEM integration or stereo photoclinometry from overlapping OHRC frames. Calibrated CPR and DOP require the full polarimetric DFSAR data product rather than the browse image proxy. Ground truth validation requires comparison with published CPR maps from Hayne et al. and Bhatt et al. Multi-epoch illumination modeling for definitive PSR boundary mapping requires ray-tracing over a full lunar year. These build-phase items are acknowledged explicitly in our outputs rather than silently omitted, which is both scientifically honest and demonstrates that we understand the full scope of the problem.
+
+9.3 Final Statement
+The lunar south pole holds the key to sustainable human presence beyond Earth. Water ice, if present in the quantities our analysis suggests, could support long-duration human habitation, generate rocket propellant for return missions, and serve as the foundation of a permanent lunar outpost. Detecting, locating, and characterizing this resource is among the most important scientific and engineering challenges of our generation.
+Voyagers of Shadows has built a pipeline that takes raw Chandrayaan-2 data and produces the intelligence needed to answer the fundamental mission questions: where to land, how to get to the ice, and what it means for human presence on the Moon. We are ready to execute this pipeline in the 30-hour hackathon window and deliver results that are scientifically honest, technically rigorous, and directly actionable for ISRO mission planning.
+
+APPENDIX: TECHNICAL SPECIFICATIONS
+Algorithms Summary
+AlgorithmInputOutputParameterSigmoid FusionCPR, DOP arraysIce probability 0-1Steepness 6.0, 8.0Gaussian FilterNoisy arraySmoothed arraySigma 1.5 pxSobel OperatorDN imageGradient magnitude3x3 kernelLocal Std-DevDN imageRoughness mapWindow 11x11 pxConnected ComponentsBinary maskLabeled regions8-connectivityMorphological Open/CloseBinary maskCleaned maskIterations 1, 2A* PathfindingCost mapWaypoint list8-connectivity, sqrt2 diagonalSolar-Power A*Cost + shadow + statePower-feasible pathMax shadow run 40 cells
+Physical Constants
+ConstantValueSourceDFSAR penetration depth5 mSpudis et al. 2010Ice fraction (conservative)5%Colaprete et al. 2010Ice fraction (best estimate)7.5%Colaprete et al. 2010Ice fraction (optimistic)10%Colaprete et al. 2010Pure ice dielectric (epsilon)3.1Ulaby et al.Water ice density917 kg/m³StandardWater per person per year1500 kgNASA ECLSSOHRC pixel size0.25 mISRO specificationShadow thresholdDN < 51Scene brightnessBoulder thresholdDN > 205Scene brightness
+Landing Site Weights
+FactorWeightRationaleSlope safety0.35Tilted lander = failed missionRoughness safety0.30Structural integrity criticalIce proximity0.20Mission science valueIllumination0.15Power availability
+Cost Map Weights
+LayerCostRationaleWell-lit terrain1.0 (base)Safe, poweredRough terrainx4.0Slow, riskyShadowx3.0Power/thermal riskBoulder / edgeInfinityImpassable
+
+Prototype output — our processing. Generated from Chandrayaan-2 DFSAR and OHRC data. All results are preliminary and subject to full CPR/DOP calibrated-data confirmation. Scientific honesty framework maintained throughout: OHRC detects shadow, not ice; brightness-gradient proxy is not slope in degrees; dielectric proxy is ice-consistent, not confirmed.
+Voyagers of Shadows | Bharatiya Antariksh Hackathon 2026 | Problem Statement
