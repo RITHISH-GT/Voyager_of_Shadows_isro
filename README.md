@@ -67,11 +67,11 @@ Every threshold stated · every assumption cited
 
 
 Repository Structure
-├── outputs/     → PNG maps and analysis figures
-├── notebooks/   → Colab pipeline notebooks
-├── src/         → Python source modules
-├── docs/        → SVG diagrams and proposal
-└── data/        → OHRC and DFSAR browse images
+──> outputs/     → PNG maps and analysis figures
+──> notebooks/   → Colab pipeline notebooks
+──> src/         → Python source modules
+──> docs/        → SVG diagrams and proposal
+──> data/        → OHRC and DFSAR browse images
 
 
 References
