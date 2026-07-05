@@ -27,7 +27,7 @@ Chandrayaan-2 DFSAR + OHRC Data
       Preprocessing
    (calibration · normalization)
             ↓
-     Ice Detection ⭐ CORE
+     Ice Detection CORE
    (CPR + DOP · Sigmoid fusion)
             ↓
     Terrain Analysis
